@@ -29,11 +29,16 @@ func Load() *Config {
 }
 
 // DSN builds a pgx-compatible connection string.
+// Omits password key when empty to avoid parse ambiguity with Unix sockets.
 func (c *Config) DSN() string {
-	return fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, c.DBName, c.SSLMode,
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s dbname=%s sslmode=%s",
+		c.Host, c.Port, c.User, c.DBName, c.SSLMode,
 	)
+	if c.Password != "" {
+		dsn += " password=" + c.Password
+	}
+	return dsn
 }
 
 func getEnv(key, defaultVal string) string {

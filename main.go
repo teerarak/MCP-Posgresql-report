@@ -24,10 +24,14 @@ func main() {
 		if err := manager.Connect(context.Background(), cfg); err != nil {
 			errLog.Printf("Warning: initial DB connection failed: %v", err)
 		} else {
-			errLog.Printf("Connected to database '%s' at %s:%s", cfg.DBName, cfg.Host, cfg.Port)
+			if cfg.Host != "" {
+				errLog.Printf("Connected to database '%s' at %s:%s", cfg.DBName, cfg.Host, cfg.Port)
+			} else {
+				errLog.Printf("Connected via DATABASE_URL")
+			}
 		}
 	} else {
-		errLog.Printf("No POSTGRES_DB set — use connect_database tool to connect")
+		errLog.Printf("No database configured — use connect_database tool or set POSTGRES_DB / DATABASE_URL")
 	}
 
 	s := server.NewMCPServer(
@@ -38,8 +42,19 @@ func main() {
 
 	tools.RegisterAll(s, manager, errLog)
 
-	errLog.Println("Starting MCP server (stdio transport)...")
-	if err := server.ServeStdio(s); err != nil {
-		errLog.Fatalf("Server error: %v", err)
+	// When PORT is set (e.g. Railway), serve over HTTP (Streamable HTTP transport).
+	// Otherwise fall back to stdio for local MCP client use.
+	if port := os.Getenv("PORT"); port != "" {
+		addr := ":" + port
+		errLog.Printf("Starting MCP server (HTTP transport) on %s ...", addr)
+		httpSrv := server.NewStreamableHTTPServer(s)
+		if err := httpSrv.Start(addr); err != nil {
+			errLog.Fatalf("HTTP server error: %v", err)
+		}
+	} else {
+		errLog.Println("Starting MCP server (stdio transport)...")
+		if err := server.ServeStdio(s); err != nil {
+			errLog.Fatalf("Server error: %v", err)
+		}
 	}
 }

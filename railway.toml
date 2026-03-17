@@ -3,7 +3,7 @@ builder = "nixpacks"
 
 [deploy]
 startCommand = "./mcp-pg-report"
-healthcheckPath = "/mcp"
+healthcheckPath = "/health"
 healthcheckTimeout = 10
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3

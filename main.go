@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/mark3labs/mcp-go/server"
@@ -47,7 +48,16 @@ func main() {
 	if port := os.Getenv("PORT"); port != "" {
 		addr := ":" + port
 		errLog.Printf("Starting MCP server (HTTP transport) on %s ...", addr)
-		httpSrv := server.NewStreamableHTTPServer(s)
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+
+		httpServer := &http.Server{Addr: addr, Handler: mux}
+		httpSrv := server.NewStreamableHTTPServer(s, server.WithStreamableHTTPServer(httpServer))
+		mux.Handle("/mcp", httpSrv)
+
 		if err := httpSrv.Start(addr); err != nil {
 			errLog.Fatalf("HTTP server error: %v", err)
 		}
